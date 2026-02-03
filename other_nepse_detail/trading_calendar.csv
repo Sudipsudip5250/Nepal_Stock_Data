@@ -278,7 +278,7 @@ Date,IsTradingDay,HolidayName
 2026-03-30,True,
 2026-03-29,True,
 2026-03-28,False,Weekend
-2026-03-27,False,Weekend
+2026-03-27,False,Ram Nawami
 2026-03-26,True,
 2026-03-25,True,
 2026-03-24,True,
@@ -318,7 +318,7 @@ Date,IsTradingDay,HolidayName
 2026-02-18,False,Gyalpo Lhosar
 2026-02-17,True,
 2026-02-16,True,
-2026-02-15,False,MahaShiva Ratri
+2026-02-15,False,Mahashiva Ratri
 2026-02-14,False,Weekend
 2026-02-13,False,Weekend
 2026-02-12,True,
@@ -334,7 +334,7 @@ Date,IsTradingDay,HolidayName
 2026-02-02,True,
 2026-02-01,True,
 2026-01-31,False,Weekend
-2026-01-30,False,Weekend
+2026-01-30,False,Martyrs Day
 2026-01-29,True,
 2026-01-28,True,
 2026-01-27,True,
