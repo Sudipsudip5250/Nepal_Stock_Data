@@ -46,14 +46,14 @@ folder_path = os.path.join(root_path, GITHUB_REPO)
 
 # Step 1: Check if the repo folder exists; skip cloning in GitHub Actions
 if IN_COLAB and not os.path.exists(os.path.join(root_path, "./other_nepse_detail/listed_company.csv")):
-    print("📁 Repository folder does not exist. Proceeding to clone.")
+    print("🔍 Repository folder does not exist. Proceeding to clone.")
     clone_cmd = f"git clone https://github.com/Sudipsudip5250/Nepal_Stock_Data.git"
     result = subprocess.run(clone_cmd, shell=True, capture_output=True, text=True)
     print(f"Clone output: {result.stdout}")
     if result.returncode != 0:
         print(f"❌ Clone failed: {result.stderr}")
         exit(1)
-    print("Cloned successfully!")
+    print("✅ Cloned successfully!")
 else:
     print("✅ Old repository folder found!")
 
@@ -80,7 +80,7 @@ GITHUB_RAW_URL = "https://raw.githubusercontent.com/Sudipsudip5250/Nepal_Stock_D
 
 # Check if the file exists
 if not os.path.exists(listed_company):
-    print(f"⚠ File '{listed_company}' not found! Downloading from GitHub...")
+    print(f"⚠️ File '{listed_company}' not found! Downloading from GitHub...")
 
     try:
         response = requests.get(GITHUB_RAW_URL, timeout=10)
@@ -121,6 +121,15 @@ for category, symbols in zip(categories, symbols_by_category):
 
     category_folder = os.path.join(BASE_FOLDER, category.strip())
     os.makedirs(category_folder, exist_ok=True)
+    
+    # Track sector-level updates
+    sector_has_updates = False
+    sector_latest_date = None
+    sector_updated_symbols = []
+
+    print(f"\n{'='*60}")
+    print(f"🔄 Processing Sector: {category.strip()}")
+    print(f"{'='*60}")
 
     for symbol in symbols:
         symbol = symbol.strip()
@@ -137,7 +146,7 @@ for category, symbols in zip(categories, symbols_by_category):
             price_history_button.click()
             time.sleep(1)
         except Exception as e:
-            print(f"Error accessing price history for {symbol}: {e}")
+            print(f"⚠️ Error accessing price history for {symbol}: {e}")
             continue
 
         try:
@@ -145,18 +154,19 @@ for category, symbols in zip(categories, symbols_by_category):
             Select(select_element).select_by_value("50")
             time.sleep(1)
         except Exception as e:
-            print(f"Failed to change display option for {symbol}: {e}")
+            print(f"⚠️ Failed to change display option for {symbol}: {e}")
             continue
 
         # Determine the latest date already present (if any)
         latest_date = None
+        existing_df = None
         if os.path.exists(csv_filename):
             try:
                 existing_df = pd.read_csv(csv_filename, encoding="utf-8")
                 latest_date = existing_df["Date"].astype(str).max()
                 print(f"📌 {symbol}: Latest data in CSV is from {latest_date}")
             except Exception as e:
-                print(f"Error reading {csv_filename}: {e}")
+                print(f"⚠️ Error reading {csv_filename}: {e}")
 
         new_data = []
         page_count = 0
@@ -165,7 +175,7 @@ for category, symbols in zip(categories, symbols_by_category):
         # Loop until the "Next" button is disabled or no longer available
         while True:
             page_count += 1
-            print(f"Scraping {symbol} - processing page {page_count}")
+            print(f"🔍 Scraping {symbol} - processing page {page_count}")
             try:
                 # Re-locate the table on each page to avoid stale element reference
                 table = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='cpricehistory']//table")))
@@ -188,23 +198,23 @@ for category, symbols in zip(categories, symbols_by_category):
                     new_data.append(data)
 
             except Exception as e:
-                print(f"No table found for {symbol}: {e}")
+                print(f"⚠️ No table found for {symbol}: {e}")
                 break
 
             if stop_scraping:
-                print(f"Stopping further scraping for {symbol} as older data encountered.")
+                print(f"⏸️ Stopping further scraping for {symbol} as older data encountered.")
                 break
 
             # Try to find and click the "Next" button; if not available or disabled, break the loop
             try:
                 next_button = driver.find_element(By.XPATH, "//a[contains(text(),'Next')]")
                 if "disabled" in next_button.get_attribute("class").lower():
-                    print("Next button is disabled. Reached last page.")
+                    print("⏹️ Next button is disabled. Reached last page.")
                     break
                 next_button.click()
                 time.sleep(1)  # You might need to adjust the wait time
             except Exception:
-                print("No 'Next' button found or an error occurred. Ending pagination.")
+                print("⏹️ No 'Next' button found or an error occurred. Ending pagination.")
                 break
 
         if new_data:
@@ -229,29 +239,54 @@ for category, symbols in zip(categories, symbols_by_category):
             # Save updated CSV file
             updated_df.to_csv(csv_filename, index=False, encoding='utf-8')
             print(f"✅ New data added for {symbol} in {csv_filename}")
+            
+            # Track sector-level updates
+            sector_has_updates = True
+            sector_updated_symbols.append(symbol)
+            
+            # Update sector latest date (keep the most recent date)
+            if sector_latest_date is None or latest_scraped_date > sector_latest_date:
+                sector_latest_date = latest_scraped_date
 
-            # Git Add, Commit, and Push
-            result = subprocess.run("git add --all", shell=True, capture_output=True, text=True)
-            print(f"Git add output: {result.stdout}")
-            if result.returncode != 0:
-                print(f"❌ Git add failed: {result.stderr}")
-                continue
-
-            commit_message = f'Updated {symbol} data up to {latest_scraped_date}' if latest_scraped_date else f'Updated {symbol} data'
-            result = subprocess.run(f'git commit -m "{commit_message}" --allow-empty', shell=True, capture_output=True, text=True)
-            print(f"Git commit output: {result.stdout}")
-            if result.returncode != 0:
-                print(f"❌ Git commit failed: {result.stderr}")
-                continue
         else:
-            print(f"⚠ No new data found for {symbol}. Skipping update.")
+            print(f"⚠️ No new data found for {symbol}. Skipping update.")
 
-    result = subprocess.run("git push origin main", shell=True, capture_output=True, text=True)
-    print(f"Git push output: {result.stdout}")
-    if result.returncode != 0:
-        print(f"❌ Git push failed: {result.stderr}")
-        continue
-    print(f"✅ Successfully pushed {symbol} data to repository.")
+    # Git Add, Commit, and Push for the entire sector
+    if sector_has_updates:
+        print(f"\n{'='*60}")
+        print(f"💾 Committing updates for sector: {category.strip()}")
+        print(f"📊 Updated {len(sector_updated_symbols)} companies: {', '.join(sector_updated_symbols)}")
+        print(f"{'='*60}\n")
+        
+        # Git add all changes
+        result = subprocess.run("git add --all", shell=True, capture_output=True, text=True)
+        print(f"Git add output: {result.stdout}")
+        if result.returncode != 0:
+            print(f"❌ Git add failed: {result.stderr}")
+            continue
+
+        # Create commit message with sector name and latest date
+        sector_name = category.strip().replace('_', ' ')
+        commit_message = f'Updated {sector_name} data up to {sector_latest_date}' if sector_latest_date else f'Updated {sector_name} data'
+        
+        result = subprocess.run(f'git commit -m "{commit_message}" --allow-empty', shell=True, capture_output=True, text=True)
+        print(f"Git commit output: {result.stdout}")
+        if result.returncode != 0:
+            print(f"❌ Git commit failed: {result.stderr}")
+            continue
+        
+        # Git push to remote
+        result = subprocess.run("git push origin main", shell=True, capture_output=True, text=True)
+        print(f"Git push output: {result.stdout}")
+        if result.returncode != 0:
+            print(f"❌ Git push failed: {result.stderr}")
+            continue
+        
+        print(f"✅ Successfully pushed {sector_name} data to repository.\n")
+    else:
+        print(f"⚠️ No updates found for sector: {category.strip()}\n")
 
 driver.quit()
-print("✅ Scraping completed for all symbols.")
+print("\n" + "="*60)
+print("🎉 Scraping completed for all sectors!")
+print("="*60)
