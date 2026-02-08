@@ -1,0 +1,12 @@
+Test File for Git Workflow Verification
+========================================
+
+This is a test file created on: 2026-02-08
+Purpose: To verify that the git add, commit, and push workflow is working correctly.
+
+If you can see this file in the repository, it means:
+✅ Git add worked
+✅ Git commit worked
+✅ Git push worked (if GITHUB_TOKEN is configured)
+
+Test Status: PASSED
