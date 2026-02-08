@@ -16,87 +16,288 @@ This repository contains structured datasets of companies listed in the **Nepal 
 ```bash
 Nepal_Stock_Data/
 │
-├── Nepse_Data/                 # Main dataset files categorized by sectors
-├── other_nepse_detail/        # listed company and holiday list
-├── Nepse_Data_Update.ipynb    # Notebook to update all data
-├── nepse_data_update.py       # Python script for scraping latest data
-├── requirements.txt           # Required Python packages
-├── .env.example               # Example environment config (optional)
-├── .gitignore                 # Git ignored files/folders
-└── README.md                  # Project documentation
+├── Nepse_Data/                      # Main dataset files categorized by sectors
+│   ├── Commercial_Banks/
+│   ├── Corporate_Debentures/
+│   ├── Development_Bank_Limited/
+│   ├── Finance/
+│   ├── Government_Bonds/
+│   ├── Hotels_And_Tourism/
+│   ├── Hydro_Power/
+│   ├── Investment/
+│   ├── Life_Insurance/
+│   ├── Manufacturing_And_Processing/
+│   ├── Microfinance/
+│   ├── Mutual_Fund/
+│   ├── Non-Life_Insurance/
+│   ├── Others/
+│   ├── Preference_Share/
+│   ├── Promoter_Share/
+│   ├── Tradings/
+│   └── (More sectors...)
+│
+├── other_nepse_detail/              # Listed company and holiday information
+│   ├── listed_company.csv
+│   ├── only_public_holidays.csv
+│   ├── public_and_weekly_holidays.csv
+│   └── trading_calendar.csv
+│
+├── company_full_data_scrap.py       # Scrapes full company data from sharesansar
+├── listed_company_update.py         # Updates and maintains listed company information
+├── nepse_data_update.py             # Main script for updating all NEPSE data
+├── nepse_holiday_update.py          # Updates holiday and trading calendar data
+├── requirements.txt                 # Required Python packages
+├── .env.example                     # Example environment configuration
+├── .gitignore                       # Git ignored files/folders
+└── README.md                        # Project documentation
 ```
 
-**🔍 About the Project**
+---
+
+## 🔍 About the Project
+
 The goal of this project is to make NEPSE data more accessible and machine-readable for:
 
-Developers 👨‍💻
-Data analysts 📈
-Researchers 🧑‍🔬
-Students 📚
+- Developers 👨‍💻
+- Data analysts 📈
+- Researchers 🧑‍🔬
+- Students 📚
 
 **📌 What's Included:**
-✅ Company-wise historical data
-✅ Sector-wise categorization
-✅ Year-wise CSV files per company
-✅ Machine-learning-ready format
 
-All data is in .csv format, scraped using Python scripts and Jupyter notebooks.
+✅ Company-wise historical stock data  
+✅ Sector-wise categorization (18+ sectors)  
+✅ CSV files per company with OHLC (Open, High, Low, Close) data  
+✅ Machine-learning-ready format  
+✅ Listed company information  
+✅ Holiday calendar with public holidays and weekends  
+✅ Trading calendar  
 
-**🌐 Data Sources**
-The data is scraped from the following public websites:
-🔗 https://nepalstock.com.np
-🔗 https://www.sharesansar.com
+All data is in **.csv** format, scraped using Python scripts.
+
+---
+
+## 🌐 Data Sources
+
+The data is sourced from the following public websites:
+
+🔗 [https://nepalstock.com.np](https://nepalstock.com.np)  
+🔗 [https://www.sharesansar.com](https://www.sharesansar.com)
 
 ⚠️ No official affiliation with these platforms.
 
-# **🛠 How It Works**
-**▶️ nepse_data_update.py**
-Automates scraping of all listed company data.
-Iterates over companies and downloads their data
-Categorizes by sector and stores in Nepse_Data/
+---
 
-Run it using:
-```bash 
+## 🛠️ Scripts Overview
+
+### **▶️ nepse_data_update.py**
+
+Main script that automates scraping of all listed company stock data.
+
+**Features:**
+- Iterates over all listed companies
+- Downloads historical OHLC data
+- Automatically categorizes by sector
+- Stores data in `Nepse_Data/` directory
+- Supports both local and Google Colab environments
+- Optional GitHub integration for auto-push (requires .env configuration)
+
+**Usage:**
+```bash
 python nepse_data_update.py
 ```
-***📓 Nepse_Data_Update.ipynb*** 
-This notebook is the visual version of the script. Use it for:
-✅ Manual inspection and debugging
-✅ Step-by-step learning
-✅ Cleaning and saving intermediate data
 
-**🗃️ other_nepse_detail/**
-This folder contains all listed company and holiday list.
+**Requirements:**
+- `.env` file with GitHub credentials (optional, for auto-push feature)
+- Chrome browser (for Selenium)
 
-**Useful for:**
-📉 Time-series modeling
-🏢 Company-level analysis
-📅 Historical trend tracking
+---
 
-**Features**
-✅ Sector-based data classification
-✅ Easy-to-use CSV format
-✅ Ready for ML/DL projects
-✅ Free for research & academic use
-✅ Fully open-source 🚀
+### **▶️ company_full_data_scrap.py**
 
-**⚙️ Installation & Setup**
+Specialized script for comprehensive company data scraping.
+
+**Features:**
+- Scrapes detailed company information
+- Downloads complete historical datasets
+- Creates organized CSV files per company
+- Handles multiple sectors
+- Auto-downloads `listed_company.csv` from GitHub if missing
+
+**Usage:**
+```bash
+python company_full_data_scrap.py
+```
+
+---
+
+### **▶️ listed_company_update.py**
+
+Maintains and updates the list of all companies traded on NEPSE.
+
+**Features:**
+- Fetches current list of listed companies
+- Maintains sector mapping
+- Keeps `listed_company.csv` updated
+- Validates company information
+- GitHub integration for version control
+
+**Usage:**
+```bash
+python listed_company_update.py
+```
+
+---
+
+### **▶️ nepse_holiday_update.py**
+
+Updates holiday calendars and trading days.
+
+**Features:**
+- Scrapes public holidays from NEPSE website
+- Generates complete holiday calendar
+- Creates `only_public_holidays.csv` (public holidays only)
+- Creates `public_and_weekly_holidays.csv` (all non-trading days)
+- Fills missing months automatically
+- Maintains `trading_calendar.csv`
+- Runs monthly via GitHub Actions
+
+**Usage:**
+```bash
+python nepse_holiday_update.py
+```
+
+---
+
+## 📦 Installation & Setup
+
+### **Prerequisites**
+- Python 3.7 or higher
+- pip (Python package manager)
+
+### **Step 1: Clone Repository**
 ```bash
 git clone https://github.com/sudipsudip5250/Nepal_Stock_Data.git
+cd Nepal_Stock_Data
+```
+
+### **Step 2: Install Dependencies**
+```bash
 pip install -r requirements.txt
 ```
-simple clone its in your project folder and after that you can bring python folder out in your project folder if you didnt bring and execute its inside then its will again clone repo inside its and update the things inside the new clone. so always try to execute its from outside only one step outside like nepse_data_update.py and Nepal_Stock_Data folder should be in same directory.
 
-**📊 Example Use Cases**
-📈 Train LSTM/Transformer models on NEPSE time-series data
-🔍 Analyze financial health by sector
-📊 Create dashboards using Plotly, Seaborn
-🎓 Conduct academic research in economics/finance
+### **Step 3: (Optional) Configure Environment Variables**
 
-📃 License & Usage Terms
-You are free to use, modify, and share the datasets for educational or non-commercial purposes.
+If you want to enable automatic GitHub push features:
 
-If you're from the original data sources and object to this usage, please contact me at:📩 sudipsudip5250@gmail.com
+1. Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` with your GitHub credentials:
+```
+USER_EMAIL_GITHUB=your_email@example.com
+USERNAME_GITHUB=your_github_username
+TOKEN_GITHUB=your_personal_access_token
+REPO_GITHUB=your_repo_name
+```
+
+---
+
+## 📊 Data Structure
+
+Each CSV file in `Nepse_Data/` contains the following columns:
+
+| Column | Description |
+|--------|-------------|
+| Date | Trading date |
+| Open | Opening price |
+| High | Highest price |
+| Low | Lowest price |
+| Close | Closing price |
+| Volume | Trading volume |
+
+---
+
+## 🔧 Execution Guidelines
+
+When running scripts:
+
+1. **Execute from the parent directory** (one level above Nepal_Stock_Data folder)
+2. Scripts will automatically detect if running in Google Colab or local environment
+3. For Colab, scripts will clone the repository automatically if needed
+4. Data is stored in `Nepse_Data/` by default
+
+**Example:**
+```
+your_project/
+├── Nepal_Stock_Data/        ← Execute scripts from here
+├── nepse_data_update.py     ← or reference from parent
+└── (other files)
+```
+
+---
+
+## 📊 Example Use Cases
+
+- 📈 Train LSTM/Transformer models on NEPSE time-series data
+- 🔍 Analyze financial health by sector
+- 📊 Create dashboards using Plotly, Seaborn
+- 🎓 Conduct academic research in economics/finance
+- 💹 Develop trading strategies
+- 📉 Time-series forecasting
+
+---
+
+## 📋 Dataset Categories
+
+**Nepse_Data/** contains data for the following sectors:
+
+- Commercial Banks
+- Corporate Debentures
+- Development Bank Limited
+- Finance
+- Government Bonds
+- Hotels and Tourism
+- Hydro Power
+- Investment
+- Life Insurance
+- Manufacturing and Processing
+- Microfinance
+- Mutual Funds
+- Non-Life Insurance
+- Others
+- Preference Share
+- Promoter Share
+- Tradings
+
+---
+
+## 📄 Related Data Files
+
+Located in `other_nepse_detail/`:
+
+- **listed_company.csv**: Complete list of all companies traded on NEPSE with sectors
+- **only_public_holidays.csv**: Public holidays only
+- **public_and_weekly_holidays.csv**: All non-trading days (weekends + public holidays)
+- **trading_calendar.csv**: Official trading calendar
+
+---
+
+## 📃 License & Usage Terms
+
+You are free to use, modify, and share the datasets for **educational or non-commercial purposes**.
+
+If you're from the original data sources and object to this usage, please contact:
+
+📧 **Email:** sudipsudip5250@gmail.com
+
+---
+
+## Version
+
+**v1.0** - Initial Release (February 2026)
 
 I will remove the content immediately upon request.
 

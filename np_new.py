@@ -16,74 +16,112 @@ from dotenv import load_dotenv
 import subprocess
 
 load_dotenv()
+
 # GitHub Credentials
 GITHUB_USERNAME = os.getenv("USERNAME_GITHUB")
-GITHUB_TOKEN = os.getenv("TOKEN_GITHUB")
-GITHUB_REPO = os.getenv("REPO_GITHUB")
+GITHUB_TOKEN = os.getenv("TOKEN_GITHUB") # Corrected typo
 GITHUB_USER_EMAIL = os.getenv("USER_EMAIL_GITHUB")
 
-# Verify GITHUB_TOKEN is set and enable/disable push accordingly
+# --- Determine Repository Names and Paths ---
+# The actual name of the public repository to clone
+CANONICAL_REPO_NAME = "Nepal_Stock_Data"
+
+# Determine the local folder name for the cloned repository
+# Prioritize REPO_GITHUB from .env, otherwise default to the canonical name
+LOCAL_REPO_FOLDER_NAME = os.getenv("REPO_GITHUB")
+# Modified: Check if LOCAL_REPO_FOLDER_NAME is None OR an empty string
+if not LOCAL_REPO_FOLDER_NAME:
+    LOCAL_REPO_FOLDER_NAME = CANONICAL_REPO_NAME
+    print(f"✅ REPO_GITHUB not found or empty in .env, defaulting local folder name to '{LOCAL_REPO_FOLDER_NAME}'.")
+else:
+    print(f"✅ Local folder name set to '{LOCAL_REPO_FOLDER_NAME}' .")
+
+# --- Verify GitHub Token and Set Defaults for Git User ---
 push_enabled = True
 if not GITHUB_TOKEN:
     print("⚠️ Warning: GITHUB_TOKEN environment variable is not set. Git push operations will be skipped.")
     push_enabled = False
 
+if not GITHUB_USER_EMAIL:
+    GITHUB_USER_EMAIL = "you@example.com"
+    print(f"⚠️ Warning: GITHUB_USER_EMAIL not set, defaulting to '{GITHUB_USER_EMAIL}'.")
+
+if not GITHUB_USERNAME:
+    GITHUB_USERNAME = "Your Name"
+    print(f"⚠️ Warning: GITHUB_USERNAME not set, defaulting to '{GITHUB_USERNAME}'.")
+
+# --- Determine Root Path and Repository Path ---
 IN_COLAB = 'google.colab' in sys.modules # Detect if we're in Colab
-# Determine root path depending on environment
 if IN_COLAB:
     root_path = "/content"
 else:
     try:
-        root_path = os.path.dirname(os.path.abspath(__file__)) # For local: use script location or current working directory
+        root_path = os.path.dirname(os.path.abspath(__file__))
     except NameError:
-        # For interactive sessions like Jupyter
         root_path = os.getcwd()
 
 print(f"📂 Root path set to: {root_path}")
-os.chdir(root_path)
 
-# Define path to repo folder
-folder_path = os.path.join(root_path, GITHUB_REPO)
+# Full path to the local repository folder
+repo_folder_path = os.path.join(root_path, LOCAL_REPO_FOLDER_NAME)
 
-# Step 1: Check if the repo folder exists; skip cloning in GitHub Actions
-if IN_COLAB and not os.path.exists(os.path.join(root_path, "./other_nepse_detail/listed_company.csv")):
-    print("🔍 Repository folder does not exist. Proceeding to clone.")
-    clone_cmd = f"git clone https://github.com/Sudipsudip5250/Nepal_Stock_Data.git"
+# --- Step 1: Clone Repository if it doesn't exist ---
+if not os.path.exists(repo_folder_path) or not os.path.isdir(repo_folder_path):
+    print(f"🔍 Repository folder '{repo_folder_path}' does not exist. Proceeding to clone.")
+    
+    # Use the CANONICAL_REPO_NAME for the source URL and LOCAL_REPO_FOLDER_NAME for the target directory
+    clone_cmd = f"git clone https://github.com/Sudipsudip5250/{CANONICAL_REPO_NAME}.git \"{repo_folder_path}\""
+    print(f"Executing clone command: {clone_cmd}")
     result = subprocess.run(clone_cmd, shell=True, capture_output=True, text=True)
-    print(f"Clone output: {result.stdout}")
+    
     if result.returncode != 0:
         print(f"❌ Clone failed: {result.stderr}")
-        exit(1)
-    print("✅ Cloned successfully!")
+        print("Exiting as repository setup failed.")
+        sys.exit(1)
+    else:
+        print("✅ Cloned successfully!")
+        if result.stdout:
+            print(f"Clone output: {result.stdout}")
 else:
-    print("✅ Old repository folder found!")
+    print(f"✅ Repository folder '{repo_folder_path}' found!")
 
-# Step 3: Set Git user credentials
-os.system(f"git config --global user.email {GITHUB_USER_EMAIL}")
-os.system(f"git config --global user.name {GITHUB_USERNAME}")
+# --- Change Directory into the Cloned Repository ---
+print(f"Current working directory before chdir: {os.getcwd()}")
+try:
+    os.chdir(repo_folder_path)
+    print(f"Changed current directory to: {os.getcwd()}")
+except OSError as e:
+    print(f"❌ Cannot change directory to '{repo_folder_path}': {e}. Exiting.")
+    sys.exit(1)
 
-# Step 4: Reset the remote URL
-# Uncommand below 7 line if you are executing this locally its will set your origin remote
-# remote_cmd = f'git remote set-url origin https://{GITHUB_USERNAME}:{GITHUB_TOKEN}@github.com/{GITHUB_USERNAME}/{GITHUB_REPO}.git'
-# result = subprocess.run(remote_cmd, shell=True, capture_output=True, text=True)
-# print(f"Set remote URL output: {result.stdout}")
-# if result.returncode != 0:
-#     print(f"❌ Failed to set remote URL: {result.stderr}")
-#     exit(1)
-# print("Repository remote set successfully!")
+# --- Step 3: Set Git user credentials ---
+os.system(f"git config --local user.email \"{GITHUB_USER_EMAIL}\"") # Use quotes for email
+os.system(f"git config --local user.name \"{GITHUB_USERNAME}\"") # Use quotes for username
+print("Git user credentials configured.")
 
-# Define base directory
+# --- Step 4: Prepare for Git Push (if enabled) ---
+if push_enabled:
+    print("Git push operations are enabled (GITHUB_TOKEN found).")
+else:
+    print("Git push operations are disabled (GITHUB_TOKEN not set).")
+
+# --- Define Base Data Paths ---
+# BASE_FOLDER will be created relative to the current working directory (repo_folder_path)
 BASE_FOLDER = "Nepse_Data"
-listed_company = "other_nepse_detail/listed_company.csv"
+# listed_company path is relative to the current working directory (repo_folder_path)
+listed_company = os.path.join("other_nepse_detail", "listed_company.csv")
 
-# GitHub raw file URL
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/Sudipsudip5250/Nepal_Stock_Data/main/other_nepse_detail/listed_company.csv"
+# GitHub raw file URL for downloading the listed companies list if not found locally
+GITHUB_RAW_URL = f"https://raw.githubusercontent.com/Sudipsudip5250/{CANONICAL_REPO_NAME}/main/{listed_company}"
 
-# Check if the file exists
+# --- Check and Download listed_company.csv ---
+print(f"Checking for listed company file at: {os.path.join(os.getcwd(), listed_company)}")
 if not os.path.exists(listed_company):
-    print(f"⚠️ File '{listed_company}' not found! Downloading from GitHub...")
-
+    print(f"⚠️ File '{listed_company}' not found locally within the cloned repository! Attempting to download from GitHub...")
     try:
+        # Ensure the directory for listed_company.csv exists before writing
+        os.makedirs(os.path.dirname(listed_company), exist_ok=True)
+        
         response = requests.get(GITHUB_RAW_URL, timeout=10)
         response.raise_for_status()  # Raise error for bad responses (4xx, 5xx)
 
@@ -93,19 +131,21 @@ if not os.path.exists(listed_company):
         print(f"✅ Successfully downloaded '{listed_company}' from GitHub.")
 
     except requests.RequestException as e:
-        print(f"❌ Failed to download file: {e}")
-        exit(1)  # Exit script if download fails
+        print(f"❌ Failed to download file '{listed_company}': {e}")
+        sys.exit(1)  # Exit script if download fails
+else:
+    print(f"✅ File '{listed_company}' found locally.")
 
-# Read the CSV file
+# --- Read the CSV file ---
 with open(listed_company, 'r', encoding='utf-8') as file:
     reader = list(csv.reader(file))
     categories = reader[0]
     symbols_by_category = list(zip(*reader[1:]))
 print("✅ Successfully loaded symbol data.")
 
-# Configure Selenium WebDriver
+# --- Configure Selenium WebDriver ---
 chrome_options = Options()
-chrome_options.add_argument("--headless=new")  # New headless mode (recommended)
+chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
@@ -115,7 +155,7 @@ service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 wait = WebDriverWait(driver, 3)
 
-# Process each category and its symbols
+# --- Process Each Category and its Symbols ---
 for category, symbols in zip(categories, symbols_by_category):
     if not category.strip():
         continue
@@ -137,11 +177,9 @@ for category, symbols in zip(categories, symbols_by_category):
         if not symbol:
             continue
 
-        # make a filename-safe symbol for saving (replace '/' with '_')
         filename_safe = symbol.replace('/', '_')
         csv_filename = os.path.join(category_folder, f"{filename_safe}.csv")
 
-        # use the original symbol (lowercased) when constructing the site URL
         url = f"https://www.sharesansar.com/company/{symbol.lower()}"
         driver.get(url)
         time.sleep(1)
@@ -162,7 +200,6 @@ for category, symbols in zip(categories, symbols_by_category):
             print(f"⚠️ Failed to change display option for {symbol}: {e}")
             continue
 
-        # Determine the latest date already present (if any)
         latest_date = None
         existing_df = None
         if os.path.exists(csv_filename):
@@ -177,18 +214,14 @@ for category, symbols in zip(categories, symbols_by_category):
         page_count = 0
         stop_scraping = False
 
-        # Loop until the "Next" button is disabled or no longer available
         while True:
             page_count += 1
             print(f"🔍 Scraping {symbol} - processing page {page_count}")
             try:
-                # Re-locate the table on each page to avoid stale element reference
                 table = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='cpricehistory']//table")))
                 rows = table.find_elements(By.XPATH, ".//tbody/tr")
 
-                # Iterate through rows and extract data
                 for row in rows:
-                    # Re-locate cells within each row
                     cells = row.find_elements(By.TAG_NAME, "td")
                     if len(cells) < 9:
                         continue
@@ -196,7 +229,6 @@ for category, symbols in zip(categories, symbols_by_category):
                     data = [cell.text.strip() for cell in cells]
                     row_date = data[1]
 
-                    # If we already have data and this row is not new, flag to stop scraping further pages
                     if latest_date and row_date <= latest_date:
                         stop_scraping = True
                         break
@@ -210,46 +242,38 @@ for category, symbols in zip(categories, symbols_by_category):
                 print(f"⏸️ Stopping further scraping for {symbol} as older data encountered.")
                 break
 
-            # Try to find and click the "Next" button; if not available or disabled, break the loop
             try:
                 next_button = driver.find_element(By.XPATH, "//a[contains(text(),'Next')]")
                 if "disabled" in next_button.get_attribute("class").lower():
                     print("⏹️ Next button is disabled. Reached last page.")
                     break
                 next_button.click()
-                time.sleep(1)  # You might need to adjust the wait time
+                time.sleep(1)
             except Exception:
                 print("⏹️ No 'Next' button found or an error occurred. Ending pagination.")
                 break
 
         if new_data:
             new_df = pd.DataFrame(new_data, columns=["S.N.", "Date", "Open", "High", "Low", "Ltp", "% Change", "Qty", "Turnover"])
-            latest_scraped_date = new_df["Date"].max()  # Get the latest date from new data
+            latest_scraped_date = new_df["Date"].max()
 
             if os.path.exists(csv_filename):
                 updated_df = pd.concat([new_df, existing_df], ignore_index=True)
             else:
                 updated_df = new_df
 
-            # Optional: convert Date column to datetime and sort (adjust ascending/descending as needed)
             updated_df["Date"] = pd.to_datetime(updated_df["Date"], format="%Y-%m-%d", errors="coerce")
-            # Sort so that the newest dates appear first; change ascending=True for oldest-first
             updated_df = updated_df.sort_values(by="Date", ascending=False).reset_index(drop=True)
-            # Reassign S.N. sequentially starting from 1
             updated_df["S.N."] = updated_df.index + 1
-            # Rearrange columns to place S.N. first
             cols = ["S.N.", "Date", "Open", "High", "Low", "Ltp", "% Change", "Qty", "Turnover"]
             updated_df = updated_df[cols]
 
-            # Save updated CSV file
             updated_df.to_csv(csv_filename, index=False, encoding='utf-8')
             print(f"✅ New data added for {symbol} in {csv_filename}")
             
-            # Track sector-level updates
             sector_has_updates = True
             sector_updated_symbols.append(symbol)
             
-            # Update sector latest date (keep the most recent date)
             if sector_latest_date is None or latest_scraped_date > sector_latest_date:
                 sector_latest_date = latest_scraped_date
 
@@ -263,14 +287,12 @@ for category, symbols in zip(categories, symbols_by_category):
         print(f"📊 Updated {len(sector_updated_symbols)} companies: {', '.join(sector_updated_symbols)}")
         print(f"{'='*60}\n")
         
-        # Git add all changes
         result = subprocess.run("git add --all", shell=True, capture_output=True, text=True)
         print(f"Git add output: {result.stdout}")
         if result.returncode != 0:
             print(f"❌ Git add failed: {result.stderr}")
             continue
 
-        # Create commit message with sector name and latest date
         sector_name = category.strip().replace('_', ' ')
         commit_message = f'Updated {sector_name} data up to {sector_latest_date}' if sector_latest_date else f'Updated {sector_name} data'
         
