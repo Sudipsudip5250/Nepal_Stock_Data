@@ -136,8 +136,12 @@ for category, symbols in zip(categories, symbols_by_category):
         if not symbol:
             continue
 
-        csv_filename = os.path.join(category_folder, f"{symbol}.csv")
-        url = f"https://www.sharesansar.com/company/{symbol}"
+        # make a filename-safe symbol for saving (replace '/' with '_')
+        filename_safe = symbol.replace('/', '_')
+        csv_filename = os.path.join(category_folder, f"{filename_safe}.csv")
+
+        # use the original symbol (lowercased) when constructing the site URL
+        url = f"https://www.sharesansar.com/company/{symbol.lower()}"
         driver.get(url)
         time.sleep(1)
 
