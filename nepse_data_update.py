@@ -263,8 +263,9 @@ for category, symbols in zip(categories, symbols_by_category):
         print(f"📊 Updated {len(sector_updated_symbols)} companies: {', '.join(sector_updated_symbols)}")
         print(f"{'='*60}\n")
         
-        # Git add all changes
-        result = subprocess.run("git add --all", shell=True, capture_output=True, text=True)
+        # Git add only the specific sector directory
+        sector_directory = os.path.join(BASE_FOLDER, category.strip())
+        result = subprocess.run(f'git add "{sector_directory}"', shell=True, capture_output=True, text=True)
         print(f"Git add output: {result.stdout}")
         if result.returncode != 0:
             print(f"❌ Git add failed: {result.stderr}")

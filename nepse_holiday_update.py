@@ -37,10 +37,11 @@ GITHUB_TOKEN = os.getenv("TOKEN_GITHUB")
 GITHUB_REPO = os.getenv("REPO_GITHUB")
 GITHUB_USER_EMAIL = os.getenv("USER_EMAIL_GITHUB")
 
-# Verify GITHUB_TOKEN is set
+# Verify GITHUB_TOKEN is set and enable/disable push accordingly
+push_enabled = True
 if not GITHUB_TOKEN:
-    print("❌ Error: GITHUB_TOKEN environment variable is not set.")
-    exit(1)
+    print("⚠️ Warning: GITHUB_TOKEN environment variable is not set. Git push operations will be skipped.")
+    push_enabled = False
 
 IN_COLAB = 'google.colab' in sys.modules
 
@@ -599,11 +600,16 @@ if staged_files:
         print(f"❌ Git commit failed: {result.stderr}")
         exit(1)
 
-    result = subprocess.run("git push origin main", shell=True, capture_output=True, text=True)
-    print(f"Git push: {result.stdout if result.stdout else 'Done'}")
-    if result.returncode != 0:
-        print(f"❌ Git push failed: {result.stderr}")
-        exit(1)
+    if push_enabled:
+        result = subprocess.run("git push origin main", shell=True, capture_output=True, text=True)
+        print(f"Git push: {result.stdout if result.stdout else 'Done'}")
+        if result.returncode != 0:
+            print(f"❌ Git push failed: {result.stderr}")
+            print("Hint: Ensure GITHUB_TOKEN is set in your .env file and has write access to the repository for pushing changes.")
+        else:
+            print(f"✅ Successfully pushed changes to repository.")
+    else:
+        print(f"⚠️ Git push skipped because GITHUB_TOKEN is not set or push is disabled.")
 else:
     print("ℹ️ No changes detected - skipping commit and push")
 
