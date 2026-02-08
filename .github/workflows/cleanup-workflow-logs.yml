@@ -1,0 +1,62 @@
+name: Cleanup Workflow Logs
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'  # Runs at 00:00 UTC on the 1st day of every month
+  workflow_dispatch:      # Allow manual trigger too
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Delete old workflow runs (keep last 5)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "🧹 Starting monthly cleanup for $REPO ..."
+          workflows=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                             -H "Accept: application/vnd.github+json" \
+                             "https://api.github.com/repos/$REPO/actions/workflows" \
+                       | jq -r '.workflows[].id')
+
+          for workflow_id in $workflows; do
+            echo "Processing workflow ID: $workflow_id ..."
+            page=1
+            while true; do
+              # Fetch workflow runs (newest first)
+              runs_json=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+                                   -H "Accept: application/vnd.github+json" \
+                                   "https://api.github.com/repos/$REPO/actions/workflows/$workflow_id/runs?per_page=100&page=$page")
+
+              runs=$(echo "$runs_json" | jq -r '.workflow_runs | .[] | .id')
+              total_runs=$(echo "$runs" | wc -l | tr -d ' ')
+              if [ "$total_runs" -eq 0 ]; then
+                break
+              fi
+
+              echo "Found $total_runs runs for workflow $workflow_id (page $page)."
+
+              # Determine which runs to delete (keep the latest 5)
+              to_delete=$(echo "$runs_json" | jq -r '.workflow_runs | sort_by(.created_at) | .[0:-5] | .[].id')
+              if [ -z "$to_delete" ]; then
+                echo "Keeping all runs (<= 5)."
+                break
+              fi
+
+              for run_id in $to_delete; do
+                echo "🗑️ Deleting run ID: $run_id"
+                curl -s -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
+                     -H "Accept: application/vnd.github+json" \
+                     "https://api.github.com/repos/$REPO/actions/runs/$run_id"
+                sleep 1
+              done
+
+              page=$((page + 1))
+            done
+          done
+          echo "✅ Cleanup complete — kept the latest 5 runs per workflow."

@@ -1,0 +1,105 @@
+name: Nepse Data Update
+
+on:
+  schedule:
+    - cron: '15 12 * * *'  # Runs daily at 12:15 UTC (6:00 PM NPT)
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check the current day and skip if Friday or Saturday
+      - name: Check if today is a trading day
+        id: check_day
+        run: |
+          # Check for Friday or Saturday
+          DAY=$(date -u +%A)
+          if [[ "$DAY" == "Friday" || "$DAY" == "Saturday" ]]; then
+            echo "Today is $DAY, skipping execution."
+            exit 1
+          fi
+
+          # Get today's date in YYYY-MM-DD format
+          TODAY=$(date -u +%F)
+          echo "Checking trading calendar for $TODAY..."
+
+          # Download the trading calendar CSV
+          curl -s -o trading_calendar.csv https://raw.githubusercontent.com/Sudipsudip5250/Nepal_Stock_Data/refs/heads/main/other_nepse_detail/trading_calendar.csv
+
+          # Check if today is marked as a trading day
+          IS_TRADING_DAY=$(awk -F',' -v date="$TODAY" '$1 == date {print $2}' trading_calendar.csv)
+
+          if [[ "$IS_TRADING_DAY" != "True" ]]; then
+            echo "Today ($TODAY) is not a trading day (marked as '$IS_TRADING_DAY'). Skipping execution."
+            exit 1
+          fi
+
+          echo "Today is a trading day. Proceeding with execution."
+
+
+      # Step 2: Checkout the repository with custom token
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TOKEN_GITHUB }}  # Use PAT for write access
+          ref: main
+
+      # Step 3: Verify repository contents
+      - name: List repository contents
+        run: |
+          pwd
+          ls -la
+          if [ -f "nepse_data_update.py" ]; then
+            echo "Found nepse_data_update.py"
+          else
+            echo "Error: nepse_data_update.py not found"
+            exit 1
+          fi
+
+      # Step 4: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # Specify Python version
+
+      # Step 5: Install Chrome
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+
+      # Step 6: Install Python dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas selenium requests python-dotenv webdriver-manager
+
+      # Step 7: Run the script with environment variables
+      - name: Run nepse_data_update.py
+        env:
+          USER_EMAIL_GITHUB: ${{ secrets.USER_EMAIL_GITHUB }}
+          USERNAME_GITHUB: ${{ secrets.USERNAME_GITHUB }}
+          TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+          REPO_GITHUB: ${{ secrets.REPO_GITHUB }}
+        run: |
+          set -x
+          python nepse_data_update.py
+        working-directory: ./
+
+      # Step 8: Commit and push any remaining changes
+      - name: Commit and push changes
+        run: |
+          git config --global user.email "${{ secrets.USER_EMAIL_GITHUB }}"
+          git config --global user.name "${{ secrets.USERNAME_GITHUB }}"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Automated update of NEPSE data $(date -u +%Y-%m-%d)"
+            git push origin main --verbose
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}

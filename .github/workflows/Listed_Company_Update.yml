@@ -1,0 +1,68 @@
+name: Listed Company Update
+
+on:
+  schedule:
+    - cron: '15 13 * * 0'  # Runs every Sunday at 1:15 PM UTC (7:00 PM NPT)
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  update-companies:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository with custom token
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TOKEN_GITHUB }}  # Use PAT for write access
+          ref: main
+
+      # Step 2: Verify repository contents
+      - name: List repository contents
+        run: |
+          pwd
+          ls -la
+          if [ -f "listed_company_update.py" ]; then
+            echo "Found listed_company_update.py"
+          else
+            echo "Error: listed_company_update.py not found"
+            exit 1
+          fi
+
+      # Step 3: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # Specify Python version
+
+      # Step 4: Install Chrome
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+
+      # Step 5: Install Python dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas selenium requests python-dotenv webdriver-manager
+
+      # Step 6: Run the script with environment variables
+      - name: Run listed_company_update.py
+        env:
+          USER_EMAIL_GITHUB: ${{ secrets.USER_EMAIL_GITHUB }}
+          USERNAME_GITHUB: ${{ secrets.USERNAME_GITHUB }}
+          TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+          REPO_GITHUB: ${{ secrets.REPO_GITHUB }}
+        run: |
+          set -x
+          python listed_company_update.py
+        working-directory: ./
+
+      # Step 7: Display final status
+      - name: Display execution status
+        if: always()
+        run: |
+          echo "Listed Company Update Workflow Completed"
+          git log --oneline -5
