@@ -327,7 +327,7 @@ if result.returncode != 0:
 
 # Git commit
 commit_message = "Updated listed company data"
-result = subprocess.run(f'git commit -m "{commit_message}" --allow-empty', shell=True, capture_output=True, text=True)
+result = subprocess.run(f'git commit -m "{commit_message}"', shell=True, capture_output=True, text=True)
 print(f"Git commit output: {result.stdout}")
 if result.returncode != 0:
     print(f"❌ Git commit failed: {result.stderr}")
