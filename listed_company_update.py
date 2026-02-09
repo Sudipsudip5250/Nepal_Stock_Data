@@ -7,6 +7,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 import sys
@@ -66,6 +73,7 @@ SECTOR_MAPPING = {
     "Others": "Others",
     "Preference Share": "Preference_Share",
     "Promotor Share": "Promotor_Share",
+    "Promoter Share": "Promoter_Share",
     "Trading": "Tradings"
 }
 
@@ -88,6 +96,51 @@ wait = WebDriverWait(driver, 10)
 url = "https://www.sharesansar.com/company-list"
 driver.get(url)
 time.sleep(3)
+
+def _dismiss_overlays(driver):
+    # Best-effort close for common overlays/banners that can intercept clicks
+    selectors = [
+        "[id*='cookie'] button",
+        "[class*='cookie'] button",
+        "[id*='consent'] button",
+        "[class*='consent'] button",
+        "[class*='modal'] [aria-label='Close']",
+        "[class*='modal'] .close",
+        "[class*='popup'] .close",
+        "[class*='overlay'] .close",
+    ]
+    for sel in selectors:
+        try:
+            elements = driver.find_elements(By.CSS_SELECTOR, sel)
+            for el in elements:
+                if el.is_displayed():
+                    try:
+                        el.click()
+                        time.sleep(0.5)
+                    except Exception:
+                        driver.execute_script("arguments[0].click()", el)
+                        time.sleep(0.5)
+        except Exception:
+            continue
+
+def safe_click(driver, wait, by, locator, timeout=10):
+    element = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by, locator)))
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
+    try:
+        WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((by, locator)))
+    except TimeoutException:
+        pass
+    try:
+        element.click()
+        return
+    except ElementClickInterceptedException:
+        _dismiss_overlays(driver)
+        try:
+            ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+        except Exception:
+            pass
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
+        driver.execute_script("arguments[0].click()", element)
 
 # Dictionary to store symbols by sector
 sector_data = defaultdict(list)
@@ -120,8 +173,7 @@ for sector_name, sector_value in all_sectors:
         time.sleep(1)
         
         # Click the search button
-        search_button = driver.find_element(By.ID, "btn_listed_submit")
-        search_button.click()
+        safe_click(driver, wait, By.ID, "btn_listed_submit")
         print(f"⏳ Waiting for data to load...")
         time.sleep(3)
         
@@ -181,7 +233,7 @@ for sector_name, sector_value in all_sectors:
                     break
                 
                 # Click next button
-                next_button.click()
+                safe_click(driver, wait, By.ID, "myTable_next")
                 print(f"➡️ Moving to next page...")
                 time.sleep(2)  # Wait for next page to load
                 
