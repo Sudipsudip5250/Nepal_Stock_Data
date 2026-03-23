@@ -58,8 +58,7 @@ python nepse_data_update.py
 ```
 
 2. Update: Repository Settings → Secrets and variables
-3. Verify: Run "Validate Secrets" workflow
-4. Test: Run one data workflow manually
+3. Test: Run one data workflow manually
 
 **Time required**: 5 minutes
 
@@ -80,7 +79,6 @@ Purpose: Automated NEPSE data scraping
 ```
 USER_EMAIL_GITHUB = bot@nepal-stock-data.local
 USERNAME_GITHUB = NepalStockData[bot]
-REPO_GITHUB = Nepal_Stock_Data
 GITHUB_TOKEN = (built-in, no setup)
 ```
 
@@ -90,7 +88,6 @@ GITHUB_TOKEN = (built-in, no setup)
 NEPSE Data   → Daily at 12:15 UTC (6:00 PM NPT)
 Companies    → Sundays at 13:15 UTC (7:00 PM NPT)
 Holidays     → 1st at 12:00 UTC (5:30 PM NPT)
-Cleanup      → 1st at 00:00 UTC (5:30 AM NPT)
 ```
 
 ---
@@ -120,10 +117,7 @@ git log --author="NepalStockData" --pretty=fuller
 | Situation         | Read This                      | Time   |
 | ----------------- | ------------------------------ | ------ |
 | First-time setup  | QUICK_REFERENCE.md             | 5 min  |
-| Configure bot     | GITHUB_BOT_SETUP.md            | 20 min |
-| Workflow details  | WORKFLOW_SETUP.md              | 15 min |
 | Security audit    | SECURITY.md                    | 30 min |
-| Troubleshooting   | QUICK_REFERENCE.md → Error Fix | 10 min |
 | Credentials issue | SECURITY.md → Token Management | 15 min |
 
 ---
@@ -203,9 +197,8 @@ git log --author="NepalStockData" --pretty=fuller
 .github/workflows/
 ├── Nepse_Data_Update.yml
 ├── Listed_Company_Update.yml
-├── Holiday_Calendar_Update.yml
-├── cleanup-workflow-logs.yml
-└── check_secrets.yml
+└── Holiday_Calendar_Update.yml
+
 ```
 
 ### Documentation
@@ -214,8 +207,6 @@ git log --author="NepalStockData" --pretty=fuller
 docs/
 ├── README.md             (This file)
 ├── QUICK_REFERENCE.md
-├── GITHUB_BOT_SETUP.md
-├── WORKFLOW_SETUP.md
 └── SECURITY.md
 ```
 
@@ -264,9 +255,7 @@ docs/
 **Intermediate (Want to understand it)**
 
 1. QUICK_REFERENCE.md - Complete
-2. WORKFLOW_SETUP.md - Overview
-3. GITHUB_BOT_SETUP.md - Configuration
-4. Done! (30 minutes)
+2. Done! (20 minutes)
 
 **Advanced (Want to manage it securely)**
 
@@ -307,9 +296,8 @@ docs/
 
 1. **Review the relevant guide** above
 2. **Check the troubleshooting section** in that guide
-3. **Run "Validate Secrets"** workflow to check configuration
-4. **Review workflow logs** for specific errors
-5. **Test locally** with `.env` file before troubleshooting workflows
+3. **Review workflow logs** for specific errors
+4. **Test locally** with `.env` file before troubleshooting workflows
 
 ---
 

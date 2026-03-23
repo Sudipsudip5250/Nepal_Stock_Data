@@ -1,0 +1,192 @@
+name: Monthly Repository Maintenance
+
+on:
+  schedule:
+    # Runs on the 15th of every month at 15:30 UTC
+    - cron: "30 15 15 * *"
+  workflow_dispatch:
+
+jobs:
+  maintain-repository:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      repository-projects: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "${{ secrets.USERNAME_GITHUB }}"
+          git config user.email "${{ secrets.USER_EMAIL_GITHUB }}"
+
+      - name: Check repository size
+        id: check_size
+        run: |
+          # Get repository size in MB
+          REPO_SIZE_RAW=$(du -sh .git | cut -f1)
+
+          # Extract number only for comparison
+          REPO_SIZE_NUM=$(echo "$REPO_SIZE_RAW" | sed 's/[A-Za-z]*$//')
+          REPO_SIZE_UNIT=$(echo "$REPO_SIZE_RAW" | sed 's/[0-9.]*//g')
+
+          # Convert to MB for comparison
+          if [ "$REPO_SIZE_UNIT" = "G" ]; then
+            REPO_SIZE_MB=$(awk "BEGIN {print int($REPO_SIZE_NUM * 1024)}")
+          else
+            REPO_SIZE_MB=$(awk "BEGIN {print int($REPO_SIZE_NUM)}")
+          fi
+
+          echo "size_raw=$REPO_SIZE_RAW" >> $GITHUB_OUTPUT
+          echo "size_mb=$REPO_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "Current .git size: $REPO_SIZE_RAW ($REPO_SIZE_MB MB)"
+
+          # Count commits
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "commits=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+          echo "Total commits: $COMMIT_COUNT"
+
+          # Check if cleanup needed (threshold: 100MB)
+          if [ "$REPO_SIZE_MB" -gt 100 ]; then
+            echo "cleanup_needed=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Repository size ($REPO_SIZE_MB MB) exceeds 100MB - CLEANUP REQUIRED"
+          else
+            echo "cleanup_needed=false" >> $GITHUB_OUTPUT
+            echo "✅ Repository size is acceptable ($REPO_SIZE_MB MB)"
+          fi
+
+      - name: Perform automatic git history cleanup
+        if: steps.check_size.outputs.cleanup_needed == 'true'
+        run: |
+          echo "🧹 Repository size exceeds threshold - Starting automated history cleanup..."
+          echo ""
+          echo "Current state:"
+          echo "  • Size: ${{ steps.check_size.outputs.size_raw }}"
+          echo "  • Commits: ${{ steps.check_size.outputs.commits }}"
+          echo ""
+
+          # Step 1: Create orphan branch
+          echo "Step 1️⃣: Creating orphan branch with current files..."
+          git checkout --orphan temp-cleanup-branch
+          echo "  ✅ Orphan branch created"
+
+          # Step 2: Add all current files
+          echo "Step 2️⃣: Staging all current files..."
+          git add -A
+          echo "  ✅ All files staged"
+
+          # Step 3: Create clean commit
+          echo "Step 3️⃣: Creating clean commit snapshot..."
+          SNAPSHOT_DATE=$(date -u "+%Y-%m-%d")
+          COMMIT_MSG="✨ Clean repository reset - Data snapshot from $SNAPSHOT_DATE"
+          git commit -m "$COMMIT_MSG"
+          echo "  ✅ Commit created with message: $COMMIT_MSG"
+
+          # Step 4: Delete old main branch
+          echo "Step 4️⃣: Removing old main branch..."
+          git branch -D main || true
+          echo "  ✅ Old main branch deleted"
+
+          # Step 5: Rename temp branch to main
+          echo "Step 5️⃣: Renaming temp-cleanup-branch to main..."
+          git branch -m main
+          echo "  ✅ Branch renamed to main"
+
+          # Step 6: Force push to remote
+          echo "Step 6️⃣: Force pushing cleaned history to remote..."
+          git push origin main --force
+          echo "  ✅ Forced push completed"
+
+          echo ""
+          echo "✅ Repository history cleanup completed successfully!"
+          echo "  • Old commit history has been reset"
+          echo "  • All current data files are preserved"
+          echo "  • Repository size will be significantly smaller"
+          echo ""
+          echo "⚠️  Note: Users with local clones should re-clone the repository"
+
+      - name: Generate repository statistics
+        id: git_stats
+        run: |
+          # Total files in repository
+          TOTAL_FILES=$(find . -type f ! -path './.git/*' ! -path './.*' | wc -l)
+          echo "total_files=$TOTAL_FILES" >> $GITHUB_OUTPUT
+
+          # CSV files count
+          CSV_COUNT=$(find . -name "*.csv" | wc -l)
+          echo "csv_files=$CSV_COUNT" >> $GITHUB_OUTPUT
+
+          # Get recent commit info
+          LAST_COMMIT=$(git log -1 --format="%h - %s" 2>/dev/null || echo "N/A")
+          echo "last_commit=$LAST_COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Generate maintenance report
+        run: |
+          echo "📊 REPOSITORY MAINTENANCE REPORT"
+          echo "================================"
+          echo ""
+          echo "📈 Repository Statistics:"
+          echo "  • Size: ${{ steps.check_size.outputs.size_raw }}"
+          echo "  • Total Commits: ${{ steps.check_size.outputs.commits }}"
+          echo "  • Total Files: ${{ steps.git_stats.outputs.total_files }}"
+          echo "  • CSV Data Files: ${{ steps.git_stats.outputs.csv_files }}"
+          echo "  • Last Commit: ${{ steps.git_stats.outputs.last_commit }}"
+          echo ""
+
+          if [ "${{ steps.check_size.outputs.cleanup_needed }}" = "true" ]; then
+            echo "🧹 Cleanup Status: ✅ PERFORMED"
+            echo "  • History reset completed"
+            echo "  • Old commits removed"
+            echo "  • New clean snapshot created"
+          else
+            echo "✅ Cleanup Status: Not needed"
+            echo "  • Repository size is optimal"
+          fi
+
+          echo ""
+          echo "⏰ Maintenance Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "📅 Next Maintenance: 15th of next month"
+
+      - name: Create workflow summary
+        if: always()
+        run: |
+          echo "# 🧹 Repository Maintenance Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Maintenance Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Repository Size | ${{ steps.check_size.outputs.size_raw }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Commits | ${{ steps.check_size.outputs.commits }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Files | ${{ steps.git_stats.outputs.total_files }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CSV Files | ${{ steps.git_stats.outputs.csv_files }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cleanup Performed | ${{ steps.check_size.outputs.cleanup_needed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check_size.outputs.cleanup_needed }}" = "true" ]; then
+            echo "## 🧹 Cleanup Performed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Automated history cleanup completed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Steps executed:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Created orphan branch with current files" >> $GITHUB_STEP_SUMMARY
+            echo "2. Staged all data files" >> $GITHUB_STEP_SUMMARY
+            echo "3. Created clean snapshot commit" >> $GITHUB_STEP_SUMMARY
+            echo "4. Deleted old main branch" >> $GITHUB_STEP_SUMMARY
+            echo "5. Renamed branch to main" >> $GITHUB_STEP_SUMMARY
+            echo "6. Force pushed cleaned history" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **User Action Required**: Re-clone repository for fresh state" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ Maintenance Status" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Repository is in good condition. No cleanup needed at this time." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Executed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
