@@ -81,7 +81,7 @@ jobs:
         env:
           USER_EMAIL_GITHUB: ${{ secrets.USER_EMAIL_GITHUB }}
           USERNAME_GITHUB: ${{ secrets.USERNAME_GITHUB }}
-          TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+          TOKEN_GITHUB: ${{ secrets.GITHUB_TOKEN }}
           REPO_GITHUB: ${{ secrets.REPO_GITHUB }}
         run: |
           set -x
@@ -90,6 +90,8 @@ jobs:
 
       # Step 8: Commit and push any remaining changes
       - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.email "${{ secrets.USER_EMAIL_GITHUB }}"
           git config --global user.name "NepalStockData[bot]"
@@ -100,5 +102,3 @@ jobs:
             git commit -m "Automated update of NEPSE data $(date -u +%Y-%m-%d)"
             git push origin main --verbose
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
