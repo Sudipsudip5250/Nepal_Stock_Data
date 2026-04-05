@@ -23,9 +23,6 @@ import subprocess
 load_dotenv()
 
 # GitHub Credentials
-# TOKEN_GITHUB receives the value of secrets.GITHUB_TOKEN fropermissions:
-  contents: write           # ← Can write to repository
-  repository-projects: read # ← Can read project infom the workflow
 GITHUB_USERNAME = os.getenv("USERNAME_GITHUB")
 GITHUB_TOKEN = os.getenv("TOKEN_GITHUB")
 GITHUB_REPO = os.getenv("REPO_GITHUB")
