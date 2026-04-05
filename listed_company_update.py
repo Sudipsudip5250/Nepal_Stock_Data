@@ -330,8 +330,12 @@ commit_message = "Updated listed company data"
 result = subprocess.run(f'git commit -m "{commit_message}"', shell=True, capture_output=True, text=True)
 print(f"Git commit output: {result.stdout}")
 if result.returncode != 0:
-    print(f"❌ Git commit failed: {result.stderr}")
-    exit(1)
+    # Check if it's a "nothing to commit" case (exit code 1 is normal)
+    if "nothing to commit" in result.stdout.lower():
+        print(f"ℹ️ No changes to commit (data already up-to-date)")
+    else:
+        print(f"❌ Git commit failed: {result.stderr}")
+        exit(1)
 
 # Git push (only if token is available)
 if push_enabled:
