@@ -1,4 +1,35 @@
 Date,IsTradingDay,HolidayName
+2026-05-31,True,
+2026-05-30,False,Weekend
+2026-05-29,False,Republic Day
+2026-05-28,True,
+2026-05-27,True,
+2026-05-26,True,
+2026-05-25,True,
+2026-05-24,True,
+2026-05-23,False,Weekend
+2026-05-22,False,Weekend
+2026-05-21,True,
+2026-05-20,True,
+2026-05-19,True,
+2026-05-18,True,
+2026-05-17,True,
+2026-05-16,False,Weekend
+2026-05-15,False,Weekend
+2026-05-14,True,
+2026-05-13,True,
+2026-05-12,True,
+2026-05-11,True,
+2026-05-10,True,
+2026-05-09,False,Weekend
+2026-05-08,False,Weekend
+2026-05-07,True,
+2026-05-06,True,
+2026-05-05,True,
+2026-05-04,True,
+2026-05-03,True,
+2026-05-02,False,Weekend
+2026-05-01,False,Buddha Jyanti
 2026-04-30,True,
 2026-04-29,True,
 2026-04-28,True,
@@ -15,7 +46,7 @@ Date,IsTradingDay,HolidayName
 2026-04-17,False,Weekend
 2026-04-16,True,
 2026-04-15,True,
-2026-04-14,True,
+2026-04-14,False,New Year
 2026-04-13,True,
 2026-04-12,True,
 2026-04-11,False,Weekend
